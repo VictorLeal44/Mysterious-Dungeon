@@ -11,3 +11,4 @@ class world_generation:
         for x in range(0, 1250, 64):
             wall = blocks.blocks(64,x,32)
             self.wall_list.append(wall.block_sprite)
+#arcade.draw_sprite(self.player.player_sprite)

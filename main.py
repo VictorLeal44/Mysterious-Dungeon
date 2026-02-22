@@ -1,6 +1,6 @@
 import arcade
 import src
-
+import threading
 # ... constantes igual ...
 
 class GameView(arcade.Window):
@@ -8,7 +8,9 @@ class GameView(arcade.Window):
         super().__init__(1280, 720, "Mysterious Dungeon")
         self.background_color = arcade.csscolor.DARK_GRAY
 
+        self.camera = arcade.Camera2D()
         self.player = src.player()
+        self.enemy = src.enemy()
         self.world_generation = src.world_generation()
         self.world_generation.only_floor()
 
@@ -16,12 +18,16 @@ class GameView(arcade.Window):
         self.PLAYER_JUMP_SPEED = 20
         self.PLAYER_MOVEMENT_SPEED = 5
 
-        # --- EL CAMBIO ESTÁ AQUÍ ---
-        # Usaremos una lista para guardar el orden de las teclas presionadas
         self.key_stack = []
 
         self.physics_engine = arcade.PhysicsEnginePlatformer(
             self.player.player_sprite,
+            self.world_generation.wall_list,
+            gravity_constant=self.GRAVITY
+        )
+
+        self.enemy_physics_engine = arcade.PhysicsEnginePlatformer(
+            self.enemy.enemy_sprite,
             self.world_generation.wall_list,
             gravity_constant=self.GRAVITY
         )
@@ -57,10 +63,16 @@ class GameView(arcade.Window):
 
     def on_update(self, delta_time):
         self.physics_engine.update()
+        self.enemy_physics_engine.update()
+        self.enemy.ia_patrol()
+        self.camera.position = self.player.player_sprite.position
 
     def on_draw(self):
         self.clear()
+        self.camera.use()
         self.world_generation.wall_list.draw()
+        arcade.draw_sprite(self.enemy.enemy_sprite)
+
         arcade.draw_sprite(self.player.player_sprite)
 
 if __name__ == "__main__":
