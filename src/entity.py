@@ -26,19 +26,13 @@ class enemy:
         self.start_x = 300
 
     def ia_patrol(self):
-        # 1. Detectar si llegamos a los límites y cambiar el estado de la dirección
         if self.enemy_sprite.center_x <= self.start_x:
             self.direction = 'right'
+            self.enemy_sprite.change_x = self.enemy_speed
+
         elif self.enemy_sprite.center_x >= self.start_x + self.patrol_range:
             self.direction = 'left'
-
-        # 2. Aplicar la velocidad al change_x para que el motor de física lo mueva
-        if self.direction == 'right':
-            self.enemy_sprite.change_x = self.enemy_speed
-        elif self.direction == 'left':
             self.enemy_sprite.change_x = -self.enemy_speed
-        else:
-            self.enemy_sprite.change_x = 0
 
     def ia_persuit(self,objetive):
         #objetive posicion del jugador (x y)
@@ -49,7 +43,7 @@ class enemy:
             'stop': 0
         }
 
-        self.enemy_sprite.center_x += move[self.direction]
+        self.enemy_sprite.change_x = move[self.direction]
 
         if 0 <=(objetive[0] - self.enemy_sprite.center_x) and 0 + limit_objetive >= (objetive[0] - self.enemy_sprite.center_x):
             self.direction = 'right'
@@ -61,12 +55,12 @@ class enemy:
 class basic_enemy(enemy):
     def __init__(self):
         super().__init__()
-        self.attack_texture_left = arcade.load_texture('./assets/ataque.png')
-        self.attack_texture_right = self.attack_texture_left.flip_left_right()
-        self.attack_sprite = arcade.Sprite(self.attack_texture_left)
-        self.attack_sprite.width = 64
-        self.attack_sprite.height = 64
-        self.hide = True
+        self.attack_texture_right = arcade.load_texture('./assets/ataque.png')
+        self.attack_texture_left = self.attack_texture_right.flip_left_right()
+        # Usaremos una lista para que el ataque tenga su propio ciclo de vida
+        self.active_attacks = arcade.SpriteList()
+        self.attack_cooldown = 0.4
+        self.last_attack_time = 0
 
     def ia_basic(self,objetive):
         limit_objetive = 300
@@ -76,7 +70,7 @@ class basic_enemy(enemy):
             'stop': 0
         }
 
-        self.enemy_sprite.center_x += move[self.direction]
+        self.enemy_sprite.change_x = move[self.direction]
 
         if 0 <=(objetive[0] - self.enemy_sprite.center_x) and 0 + limit_objetive >= (objetive[0] - self.enemy_sprite.center_x):
             self.direction = 'right'
@@ -89,19 +83,35 @@ class basic_enemy(enemy):
 
     def melee_attack(self, objetive):
         distancia_x = objetive[0] - self.enemy_sprite.center_x
+        current_time = time.time()
 
-        if abs(distancia_x) <= 100:
-            self.hide = True
-            self.attack_sprite.center_y = self.enemy_sprite.center_y
+        # Si está en rango Y el cooldown ha pasado
+        if abs(distancia_x) <= 100 and (current_time - self.last_attack_time > self.attack_cooldown):
+            # Creamos el "efecto" del ataque
+            hit = arcade.Sprite()
+            hit.height = 64
+            hit.width = 64
+            hit.center_y = self.enemy_sprite.center_y
 
-            if distancia_x > 0: # El jugador está a la derecha
-                self.attack_sprite.texture = self.attack_texture_left
-                self.attack_sprite.center_x = self.enemy_sprite.center_x + 40
-            else: # El jugador está a la izquierda
-                self.attack_sprite.texture = self.attack_texture_right
-                self.attack_sprite.center_x = self.enemy_sprite.center_x - 40
-        else:
-            self.hide = False
+            # Orientación
+            if distancia_x > 0:
+                hit.texture = self.attack_texture_right
+                hit.center_x = self.enemy_sprite.center_x + 40
+            else:
+                hit.texture = self.attack_texture_left
+                hit.center_x = self.enemy_sprite.center_x - 40
+
+            # Propiedad personalizada para saber cuándo borrarlo
+            hit.timer = 0.2 # El ataque durará 0.2 segundos visible
+            self.active_attacks.append(hit)
+            self.last_attack_time = current_time
+
+    def update_melee_logic(self, delta_time):
+        """Lógica para desvanecer o borrar el ataque"""
+        for hit in self.active_attacks:
+            hit.timer -= delta_time
+            if hit.timer <= 0:
+                hit.remove_from_sprite_lists()
 
 
 class ranged_enemy(enemy):
@@ -110,7 +120,7 @@ class ranged_enemy(enemy):
         """Enemigo específico que ataca a distancia."""
         # Atributos específicos de ataque a distancia
         self.bullet_list = arcade.SpriteList()
-        self.bullet_speed = 5
+        self.bullet_speed = 4
         self.shoot_cooldown = 1.5
         self.last_shoot_time = 0
 
@@ -118,24 +128,30 @@ class ranged_enemy(enemy):
         self.bullet_texture_right = arcade.load_texture('./assets/ataque.png')
         self.bullet_texture_left = self.bullet_texture_right.flip_left_right()
 
-    def ia_ranged_logic(self, player_pos):
+    def ia_ranged_logic(self, objetive):
         """Lógica de disparo y movimiento específica."""
-        distancia_x = player_pos[0] - self.enemy_sprite.center_x
+        distancia_x = objetive[0] - self.enemy_sprite.center_x
         current_time = time.time()
 
         # Lógica de disparo
         if 100 < abs(distancia_x) < 500:
+
             if current_time - self.last_shoot_time > self.shoot_cooldown:
                 self.shoot(distancia_x)
                 self.last_shoot_time = current_time
 
-        # Actualizar proyectiles
+        for bullet in self.bullet_list:
+                # Si la bala se aleja más de 600 px del enemigo, se borra
+                if arcade.get_distance_between_sprites(bullet, self.enemy_sprite) > 600:
+                    bullet.remove_from_sprite_lists()
+
         self.bullet_list.update()
+
 
     def shoot(self, direction_x):
         """Crea el objeto proyectil."""
         bullet = arcade.Sprite()
-        bullet.scale = 0.2
+        bullet.scale = 0.5
         bullet.center_y = self.enemy_sprite.center_y
 
         if direction_x > 0:
@@ -146,7 +162,6 @@ class ranged_enemy(enemy):
             bullet.texture = self.bullet_texture_left
             bullet.center_x = self.enemy_sprite.center_x - 50
             bullet.change_x = -self.bullet_speed
-
         self.bullet_list.append(bullet)
 
 class air_enemy(enemy):

@@ -1,7 +1,6 @@
 import arcade
 import src
 import threading
-# ... constantes igual ...
 
 class GameView(arcade.Window):
     def __init__(self):
@@ -71,11 +70,11 @@ class GameView(arcade.Window):
         self.physics_engine.update()
         self.enemy_physics_engine.update()
         self.ranged_enemy_physics_engine.update()
-        #self.enemy.ia_patrol()
-        #self.enemy.ia_persuit(self.player.player_sprite.position)
         self.enemy.ia_basic(self.player.player_sprite.position)
         self.ranged_enemy.ia_ranged_logic(self.player.player_sprite.position)
         self.camera.position = self.player.player_sprite.position
+        self.ranged_enemy.bullet_list.update()
+        self.enemy.update_melee_logic(delta_time)
 
     def on_draw(self):
         self.clear()
@@ -84,8 +83,8 @@ class GameView(arcade.Window):
         arcade.draw_sprite(self.enemy.enemy_sprite)
         arcade.draw_sprite(self.player.player_sprite)
         arcade.draw_sprite(self.ranged_enemy.enemy_sprite)
-        if self.enemy.hide == True:
-            arcade.draw_sprite(self.enemy.attack_sprite)
+        self.enemy.active_attacks.draw()
+        self.ranged_enemy.bullet_list.draw()
 
 if __name__ == "__main__":
     game = GameView()
