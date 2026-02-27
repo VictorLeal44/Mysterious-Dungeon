@@ -10,7 +10,8 @@ class GameView(arcade.Window):
 
         self.camera = arcade.Camera2D()
         self.player = src.player()
-        self.enemy = src.enemy()
+        self.enemy = src.basic_enemy()
+        self.ranged_enemy = src.ranged_enemy()
         self.world_generation = src.world_generation()
         self.world_generation.only_floor()
 
@@ -28,6 +29,11 @@ class GameView(arcade.Window):
 
         self.enemy_physics_engine = arcade.PhysicsEnginePlatformer(
             self.enemy.enemy_sprite,
+            self.world_generation.wall_list,
+            gravity_constant=self.GRAVITY
+        )
+        self.ranged_enemy_physics_engine = arcade.PhysicsEnginePlatformer(
+            self.ranged_enemy.enemy_sprite,
             self.world_generation.wall_list,
             gravity_constant=self.GRAVITY
         )
@@ -64,9 +70,11 @@ class GameView(arcade.Window):
     def on_update(self, delta_time):
         self.physics_engine.update()
         self.enemy_physics_engine.update()
+        self.ranged_enemy_physics_engine.update()
         #self.enemy.ia_patrol()
         #self.enemy.ia_persuit(self.player.player_sprite.position)
         self.enemy.ia_basic(self.player.player_sprite.position)
+        self.ranged_enemy.ia_ranged_logic(self.player.player_sprite.position)
         self.camera.position = self.player.player_sprite.position
 
     def on_draw(self):
@@ -75,6 +83,7 @@ class GameView(arcade.Window):
         self.world_generation.wall_list.draw()
         arcade.draw_sprite(self.enemy.enemy_sprite)
         arcade.draw_sprite(self.player.player_sprite)
+        arcade.draw_sprite(self.ranged_enemy.enemy_sprite)
         if self.enemy.hide == True:
             arcade.draw_sprite(self.enemy.attack_sprite)
 
