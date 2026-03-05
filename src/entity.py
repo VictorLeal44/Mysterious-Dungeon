@@ -3,6 +3,7 @@ import time
 
 class player:
     def __init__(self):
+        """ sprite"""
         self.player_texture = './assets/folder.png'
         self.player_sprite = arcade.Sprite(self.player_texture)
         self.player_sprite.width = 132
@@ -10,10 +11,11 @@ class player:
         self.player_sprite.center_x = 128
         self.player_sprite.center_y = 128
 
+#class
 
 class enemy:
     def __init__(self):
-        self.enemy_texture = './assets/slime.png'
+        self.enemy_texture = './assets/slime1.png'
         self.enemy_sprite = arcade.Sprite(self.enemy_texture)
         self.enemy_sprite.width = 132
         self.enemy_sprite.height = 132
@@ -51,6 +53,11 @@ class enemy:
             self.direction = 'left'
         else:
             self.direction = 'stop'
+
+class slime(enemy):
+    def __init__(self):
+        super().__init__()
+
 
 class basic_enemy(enemy):
     def __init__(self):
